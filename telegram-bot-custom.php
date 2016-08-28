@@ -15,15 +15,17 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
         return;
     }
 
-    if ( $text == '/info' || $text == '/help' ) {
-
+    if ( $text == 'info' || $text == '/help' ) {
+      telegram_sendmessage( $telegram_user_id, 'Bot creato per http://terremotocentroitalia.info/'.PHP_EOL.'Per info e suggerimenti: @Milmor');
+    } else if ( $text == 'carica exif' ) {
+      telegram_sendmessage( $telegram_user_id, 'Puoi inviare più foto contemporaneamente e in differita utilizzando "invia file" anziché "invia foto".'
+    .PHP_EOL.'In questo modo verrà estratta in automatico latitudine, longitudine e data di scatto della foto');
     } else if ( $text == '/mappa' || $text == 'mappa' ) {
-
+      telegram_sendmessage( $telegram_user_id, 'Coming soon');
     } else if ( $text == '/stato' || $text == 'stato' ) {
-
+      telegram_sendmessage( $telegram_user_id, 'Coming soon');
     } else if ( $text == '/segnala' || $text == 'segnala') {
-        telegram_sendmessage( $telegram_user_id, 'Inviami la tua posizione attuale');
-        update_post_meta( $plugin_post_id, 'telegram_custom_state', 'position_wait' );
+        telegram_sendmessage( $telegram_user_id, 'Puoi caricare una foto in diretta inviando per prima cosa la tua posizione.');
     } else if ( get_post_meta( $plugin_post_id, 'telegram_custom_state', true ) == 'description_wait' && $text != '') {
       update_post_meta( $plugin_post_id, 'telegram_custom_description', sanitize_text_field($text) );
       telegram_sendmessage( $telegram_user_id, 'Inviami una foto');
