@@ -1,5 +1,11 @@
+<?php
+/*
+Plugin Name: Telegram Bot & Channel (Custom)
+Description: My Custom Telegram Plugin
+Author: My name
+Version: 1
+*/
 
-<<<<<<< HEAD
 add_action('telegram_parse','telegramcustom_parse', 10, 2);
 
 function telegramcustom_parse( $telegram_user_id, $text ) {
@@ -10,19 +16,11 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
     }
 
     if ( $text == '/info' || $text == '/help' ) {
-<<<<<<< HEAD
 
     } else if ( $text == '/mappa' || $text == 'mappa' ) {
 
     } else if ( $text == '/stato' || $text == 'stato' ) {
 
-=======
-    	
-    } else if ( $text == '/mappa' || $text == 'mappa' ) {
-    	
-    } else if ( $text == '/stato' || $text == 'stato' ) {
-    	
->>>>>>> 9da667e6f639c686e4f40219c6b21080a998af56
     } else if ( $text == '/segnala' || $text == 'segnala') {
         telegram_sendmessage( $telegram_user_id, 'Inviami la tua posizione attuale');
         update_post_meta( $plugin_post_id, 'telegram_custom_state', 'position_wait' );
@@ -207,5 +205,3 @@ function telegram_read_gps_location($file){
 }
 
 ?>
-=======
->>>>>>> 04314d088627d6c09aac4952b08c3630da5a3238
