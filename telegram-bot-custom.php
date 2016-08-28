@@ -15,32 +15,55 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
         return;
     }
 
-    if ( $text == 'segnala') {
+    if ( $text == '/info' || $text == '/help' ) {
+
+    } else if ( $text == '/mappa' || $text == 'mappa' ) {
+
+    } else if ( $text == '/stato' || $text == 'stato' ) {
+
+    } else if ( $text == '/segnala' || $text == 'segnala') {
         telegram_sendmessage( $telegram_user_id, 'Inviami la tua posizione attuale');
         update_post_meta( $plugin_post_id, 'telegram_custom_state', 'position_wait' );
     } else if ( get_post_meta( $plugin_post_id, 'telegram_custom_state', true ) == 'description_wait' && $text != '') {
-      $lat = get_post_meta( $plugin_post_id, 'telegram_last_latitude', true );
-      $long = get_post_meta( $plugin_post_id, 'telegram_last_longitude', true );
-      $description = sanitize_text_field($text);
-
-      global $wpdb;
-
-      $wpdb->insert(
-          $wpdb->prefix . 'segnalazioni',
-          array(
-              'lat' => $lat,
-              'lon' => $long,
-              'telegram_id' => $telegram_user_id,
-              'wordpress_id' =>$plugin_post_id,
-              'description' => $description
-          ),
-          array( '%s', '%s', '%d', '%d', '%s' )
-      );
-      telegram_sendmessage( $telegram_user_id, 'Dati salvati. Grazie');
+      update_post_meta( $plugin_post_id, 'telegram_custom_description', sanitize_text_field($text) );
+      telegram_sendmessage( $telegram_user_id, 'Inviami una foto');
     }
 
     return;
 }
+
+add_action('telegram_parse_photo','telegram_parse_photo_s', 10, 2);
+
+function telegram_parse_photo_s ( $telegram_user_id, $photo  ) {
+  $url = telegram_download_photo( $telegram_user_id, $photo[2]['file_id'] );
+  if ( $url ) {
+    $plugin_post_id = telegram_getid( $telegram_user_id );
+
+    $lat = get_post_meta( $plugin_post_id, 'telegram_last_latitude', true );
+    $long = get_post_meta( $plugin_post_id, 'telegram_last_longitude', true );
+    $desc = get_post_meta( $plugin_post_id, 'telegram_custom_description', true );
+
+    global $wpdb;
+
+    $wpdb->insert(
+        $wpdb->prefix . 'segnalazioni',
+        array(
+            'lat' => $lat,
+            'lon' => $long,
+            'telegram_id' => $telegram_user_id,
+            'wordpress_id' =>$plugin_post_id,
+            'description' => $desc,
+            'url' => $url
+        ),
+        array( '%s', '%s', '%d', '%d', '%s' )
+    );
+    telegram_sendmessage( $telegram_user_id, 'Foto registrata. Grazie');
+    delete_post_meta( $plugin_post_id, 'telegram_custom_description' );
+    delete_post_meta( $plugin_post_id, 'telegram_custom_state' );
+
+  }
+}
+
 
 add_action('telegram_parse_location','telegramcustom_c_parse_location', 10, 3);
 
@@ -53,8 +76,13 @@ function telegramcustom_c_parse_location ( $telegram_user_id, $lat, $long  ) {
 
   if ( get_post_meta( $plugin_post_id, 'telegram_custom_state', true ) == 'position_wait' ) {
     $int = telegram_location_haversine_distance ( 42.7, 13.24, $lat, $long, $earthRadius = 6371);
-    telegram_sendmessage( $telegram_user_id, 'Posizione ricevuta.'.PHP_EOL.'Ti trovi a '.$int.' km di distanza dall\'epicentro');
-    telegram_sendmessage( $telegram_user_id, 'Inviami la descrizione della tua posizione');
+    telegram_sendmessage( $telegram_user_id, 'Posizione ricevuta ('.$int.' km dall\'epicentro)');
+    telegram_sendmessage( $telegram_user_id, 'Inviami una descrizione o direttamente la foto');
+    update_post_meta( $plugin_post_id, 'telegram_custom_state', 'description_wait' );
+  } else {
+    $int = telegram_location_haversine_distance ( 42.7, 13.24, $lat, $long, $earthRadius = 6371);
+    telegram_sendmessage( $telegram_user_id, 'Posizione ricevuta ('.$int.' km dall\'epicentro)');
+    telegram_sendmessage( $telegram_user_id, 'Inviami una descrizione o direttamente la foto');
     update_post_meta( $plugin_post_id, 'telegram_custom_state', 'description_wait' );
   }
 
