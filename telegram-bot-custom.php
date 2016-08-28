@@ -1,11 +1,5 @@
-<?php
-/*
-Plugin Name: Telegram Bot & Channel (Custom)
-Description: My Custom Telegram Plugin
-Author: My name
-Version: 1
-*/
 
+<<<<<<< HEAD
 add_action('telegram_parse','telegramcustom_parse', 10, 2);
 
 function telegramcustom_parse( $telegram_user_id, $text ) {
@@ -213,3 +207,5 @@ function telegram_read_gps_location($file){
 }
 
 ?>
+=======
+>>>>>>> 04314d088627d6c09aac4952b08c3630da5a3238
