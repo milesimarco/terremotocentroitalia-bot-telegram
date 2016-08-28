@@ -15,7 +15,13 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
         return;
     }
 
-    if ( $text == 'segnala') {
+    if ( $text == '/info' || $text == '/help' ) {
+    	
+    } else if ( $text == '/mappa' || $text == 'mappa' ) {
+    	
+    } else if ( $text == '/stato' || $text == 'stato' ) {
+    	
+    } else if ( $text == '/segnala' || $text == 'segnala') {
         telegram_sendmessage( $telegram_user_id, 'Inviami la tua posizione attuale');
         update_post_meta( $plugin_post_id, 'telegram_custom_state', 'position_wait' );
     } else if ( get_post_meta( $plugin_post_id, 'telegram_custom_state', true ) == 'description_wait' && $text != '') {
