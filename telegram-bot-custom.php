@@ -149,6 +149,7 @@ function telegramcustom_csv_pull() {
   }
 
   $filename = $file."_".date("Y-m-d_H-i",time());
+  header('Access-Control-Allow-Origin: *');
   header("Content-type: text/csv; charset=utf-8");
   header("Content-disposition: csv" . date("Y-m-d") . ".csv");
   header( "Content-disposition: filename=".$filename.".csv");
