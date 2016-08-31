@@ -9,10 +9,74 @@ Version: 1
 add_action('telegram_parse','telegramcustom_parse', 10, 2);
 
 function telegramcustom_parse( $telegram_user_id, $text ) {
+
     $plugin_post_id = telegram_getid( $telegram_user_id );
 
     if ( !$plugin_post_id ) {
         return;
+    }
+
+    if ( $telegram_user_id == '63480147' || $telegram_user_id == '61359892' ) {
+      if ( $text == 'ok' ) {
+        global $wpdb;
+        $wpdb->update(
+            $wpdb->prefix . 'segnalazioni',
+            array(
+                'stato' => 1
+            ),
+            array(
+                'stato' => '0'
+            ),
+            array( '%d', '%d' )
+        );
+        telegram_sendmessage( $telegram_user_id, 'Approvato tutto. Digita d:ID se vuoi rimuovere qualcosa');
+        die();
+      } else if ( substr( $text, 0, 1 ) === 'd' ) { //as:id:issue
+        $arr = explode(':', $text);
+        global $wpdb;
+        $wpdb->update(
+            $wpdb->prefix . 'segnalazioni',
+            array(
+                'stato' => 2
+            ),
+            array(
+                'id' => $arr[1]
+            ),
+            array( '%d', '%d' )
+        );
+        telegram_sendmessage( $telegram_user_id, $arr[1].' eliminato');
+        die();
+      } else if ( substr( $text, 0, 2 ) === 'as' ) { //as:id:issue
+
+        $arr = explode(':', $text);
+
+        global $wpdb;
+
+        $ob = $wpdb->get_row('SELECT * FROM '.$wpdb->prefix.'segnalazioni WHERE id="'.$arr[1].'"');
+
+        $title = $ob->description;
+        $body = '!['.$ob->description.']('.$ob->url.')'.PHP_EOL.'[Link Mappa](http://umap.openstreetmap.fr/it/map/terremoto-centro_100394#12/'.$ob->lat.'/'.$ob->lon.')';
+
+        $data = array(
+          'value1' => $title,
+          'value2' => $body
+        );
+
+        $options = array(
+          'http' => array(
+            'method'  => 'POST',
+            'content' => json_encode( $data ),
+            'header'=>  "Content-Type: application/json\r\n" .
+                        "Accept: application/json\r\n"
+            )
+        );
+
+        $context  = stream_context_create( $options );
+        $result = file_get_contents( 'https://maker.ifttt.com/trigger/crea_issue/with/key/nwnv5x6ooRIwUFXax2A81Dt5mpRI71wmz9RKfR11-Us', false, $context );
+        $response = json_decode( $result );
+        die();
+
+      }
     }
 
     if ( $text == 'info' || $text == '/help' ) {
@@ -20,13 +84,25 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
     } else if ( $text == 'carica più foto' ) {
       telegram_sendmessage( $telegram_user_id, 'Puoi inviare più foto contemporaneamente e in differita utilizzando "invia file" anziché "invia foto".'
     .PHP_EOL.'In questo modo verrà estratta in automatico latitudine, longitudine e data di scatto della foto');
-    } else if ( $text == '/mappa' || $text == 'mappa' ) {
-      telegram_sendmessage( $telegram_user_id, 'Coming soon');
+    } else if ( $text == 'oggi' ) {
+      telegram_sendmessage( $telegram_user_id, 'http://goo.gl/rZ0BeY');
+    } else if ( $text == 'totale' ) {
+      telegram_sendmessage( $telegram_user_id, 'http://goo.gl/bqaHVn');
     } else if ( $text == '/stato' || $text == 'stato' ) {
-      telegram_sendmessage( $telegram_user_id, 'Coming soon');
+      global $wpdb;
+      $conteggio = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}segnalazioni WHERE telegram_id=".$telegram_user_id.";" );
+      telegram_sendmessage( $telegram_user_id, 'Hai inviato '.$conteggio.' segnalazioni.');
     } else if ( $text == '/segnala' || $text == 'segnala') {
-        telegram_sendmessage( $telegram_user_id, 'Puoi caricare una foto in diretta inviando per prima cosa la tua posizione.');
+        telegram_sendmessage( $telegram_user_id, 'Tramite la 📎 invia per prima cosa la tua posizione');
     } else if ( get_post_meta( $plugin_post_id, 'telegram_custom_state', true ) == 'description_wait' && $text != '') {
+      $lat = get_post_meta( $plugin_post_id, 'telegram_last_latitude', true );
+      $long = get_post_meta( $plugin_post_id, 'telegram_last_longitude', true );
+      if ( !$lat > 0 || !$long > 0 ) {
+        telegram_sendmessage( $telegram_user_id, 'Tramite la 📎 invia per prima cosa la tua posizione');
+        delete_post_meta( $plugin_post_id, 'telegram_custom_description' );
+        delete_post_meta( $plugin_post_id, 'telegram_custom_state' );
+        return;
+      }
       update_post_meta( $plugin_post_id, 'telegram_custom_description', sanitize_text_field($text) );
       telegram_sendmessage( $telegram_user_id, 'Inviami una foto');
     }
@@ -34,10 +110,10 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
 }
 
 function telegram_parse_document_s ( $telegram_user_id, $document  ) {
+
   $url = telegram_download_file( $telegram_user_id, $document['file_id'] );
   if ( $url ) {
 
-    $plugin_post_id = telegram_getid( $telegram_user_id );
     $local_url = ABSPATH.'wp-content/uploads/telegram-bot/'.$plugin_post_id.'/'.basename( $url );
 
     if ( $geo = telegram_read_gps_location( $local_url ) ) {
@@ -64,8 +140,9 @@ function telegram_parse_document_s ( $telegram_user_id, $document  ) {
       $int = telegram_location_haversine_distance ( 42.7, 13.24, $lat, $lon, $earthRadius = 6371);
 
       telegram_sendmessage( $telegram_user_id, 'Foto registrata e geolocalizzata a '.$int.' km dall\'epicentro.  Grazie');
-      telegram_log('@@', '##', 'received file from '.$lat.' - '.$lon);
+      telegramcustom_send_check( $wpdb->insert_id, $url );
     } else {
+      telegram_sendmessage( $telegram_user_id, 'Geolocalizzazione non trovata: impossibile salvare.');
       telegram_log('@@', '##', 'not compatible');
     }
   } else {
@@ -74,13 +151,22 @@ function telegram_parse_document_s ( $telegram_user_id, $document  ) {
 } add_action('telegram_parse_document','telegram_parse_document_s', 10, 2);
 
 function telegram_parse_photo_s ( $telegram_user_id, $photo  ) {
-  $url = telegram_download_file( $telegram_user_id, $photo[2]['file_id'] );
-  if ( $url ) {
-    $plugin_post_id = telegram_getid( $telegram_user_id );
+
+$plugin_post_id = telegram_getid( $telegram_user_id );
 
     $lat = get_post_meta( $plugin_post_id, 'telegram_last_latitude', true );
     $long = get_post_meta( $plugin_post_id, 'telegram_last_longitude', true );
+    if ( !$lat > 0 || !$long > 0 ) {
+      telegram_sendmessage( $telegram_user_id, 'Tramite la 📎 invia per prima cosa la tua posizione');
+      return;
+    }
+
+  $url = telegram_download_file( $telegram_user_id, $photo[2]['file_id'] );
+  if ( $url ) {
+
     $desc = get_post_meta( $plugin_post_id, 'telegram_custom_description', true );
+
+    get_post_meta($plugin_post_id, 'telegram_username', true) ? $t_user = get_post_meta($plugin_post_id, 'telegram_username', true) : $t_user = '';
 
     global $wpdb;
 
@@ -90,15 +176,20 @@ function telegram_parse_photo_s ( $telegram_user_id, $photo  ) {
             'lat' => $lat,
             'lon' => $long,
             'telegram_id' => $telegram_user_id,
-            'wordpress_id' =>$plugin_post_id,
+            'telegram_username' => $t_user,
+            'wordpress_id' => $plugin_post_id,
             'description' => $desc,
             'url' => $url
         ),
-        array( '%s', '%s', '%d', '%d', '%s' )
+        array( '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
     );
     telegram_sendmessage( $telegram_user_id, 'Foto registrata. Grazie');
     delete_post_meta( $plugin_post_id, 'telegram_custom_description' );
     delete_post_meta( $plugin_post_id, 'telegram_custom_state' );
+    delete_post_meta( $plugin_post_id, 'telegram_last_latitude' );
+    delete_post_meta( $plugin_post_id, 'telegram_last_longitude' );
+
+    telegramcustom_send_check( $wpdb->insert_id, $url );
 
   }
 } add_action('telegram_parse_photo','telegram_parse_photo_s', 10, 2);
@@ -127,18 +218,32 @@ function telegramcustom_c_parse_location ( $telegram_user_id, $lat, $long  ) {
 
 }
 
+function telegramcustom_send_check( $id, $url ) {
+   telegram_sendphoto( '63480147', $id.' - Digita ok per approvare, d:ID per eliminare, as:ID per creare issue', $url);
+   telegram_sendphoto( '61359892', $id.' - Digita ok per approvare, d:ID per eliminare, as:ID per creare issue', $url);
+}
+
 function telegramcustom_csv_pull() {
 
-  $filename = ABSPATH.'segnalazioni.csv';
-
-  telegram_log('######', 'platform', 'start csv pull '.$filename);
+  $where = '';
+  if ( isset( $_GET[ 'mese' ] ) && absint( $_GET[ 'mese' ] ) ) {
+    $where = ' AND MONTH(time)='.$_GET[ 'mese' ];
+  }
+  if ( isset( $_GET[ 'giorno' ] ) ) {
+    if ( absint( $_GET[ 'giorno' ] ) ) {
+      $where .= ' AND DAY(time)='.$_GET[ 'giorno' ];
+    } else if ( $_GET['giorno'] == 'oggi') {
+      $where = ' AND DAY(time)='.date("d");
+    }
+  }
 
   global $wpdb;
   $file = 'segnalazioni';
-  $results = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}segnalazioni;",ARRAY_A);
+  $results = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}segnalazioni WHERE stato=1".$where.";",ARRAY_A);
 
   if (empty($results)) {
-    return;
+    print '"id","lat","lon","telegram_id","wordpress_id","description","url","time","stato"';
+    die();
   }
 
   $csv_output = '"'.implode('","',array_keys($results[0])).'"';
@@ -147,11 +252,13 @@ function telegramcustom_csv_pull() {
     $csv_output .= "\r\n".'"'.implode('","',$row).'"';
   }
 
+  if (  $_GET[ 'get-csv' ] == 'true' ) {
   $filename = $file."_".date("Y-m-d_H-i",time());
-  header('Access-Control-Allow-Origin: *');
-  header("Content-type: text/csv; charset=utf-8");
-  header("Content-disposition: csv" . date("Y-m-d") . ".csv");
+  header( "Access-Control-Allow-Origin: *");
+  header( "Content-type: text/csv; charset=utf-8");
+  header( "Content-disposition: csv" . date("Y-m-d") . ".csv");
   header( "Content-disposition: filename=".$filename.".csv");
+}
   print $csv_output;
   die();
 }
