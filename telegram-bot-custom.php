@@ -30,7 +30,6 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
       update_post_meta( $plugin_post_id, 'telegram_custom_description', sanitize_text_field($text) );
       telegram_sendmessage( $telegram_user_id, 'Inviami una foto');
     }
-
     return;
 }
 
