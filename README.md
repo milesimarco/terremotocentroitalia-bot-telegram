@@ -33,8 +33,8 @@ Gli amministratori riceveranno, sempre all'interno del bot, la notifica di ogni 
 
 ## Note
 
-Ogni segnalazione ha stato iniziale = 0
-Il CSV estrapola solamente le segnalazioni con stato = 1
-Il comando d:ID è attivo sia per segnalazioni con stato = 0, sia per stato = 1
-Il comando ok agisce solo su foto con stato = 0
-In caso di digitazione as:ID ma issue già creata viene ritornato errore
+- Ogni segnalazione ha stato iniziale = 0
+- Il CSV estrapola solamente le segnalazioni con stato = 1
+- Il comando d:ID è attivo sia per segnalazioni con stato = 0, sia per stato = 1
+- Il comando ok agisce solo su foto con stato = 0
+- In caso di digitazione as:ID ma issue già creata viene ritornato errore
