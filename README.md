@@ -18,18 +18,18 @@ Attendere la conferma (in caso contrario provare a rimandare la foto o la posizi
 
 ## Pulsanti tastiera
 
-segnala -> spiega come inoltrare una segnalazone (il processo parte inviando la posizione GPS)
-mappa -> mostra un'altra tastiera dalla quale si può visualizzare mappa odierna e totale
-stato -> mostra il numero delle segnalazioni inoltrate dall'utente
-info -> mostra credits
+- segnala -> spiega come inoltrare una segnalazone (il processo parte inviando la posizione GPS)
+- mappa -> mostra un'altra tastiera dalla quale si può visualizzare mappa odierna e totale
+- stato -> mostra il numero delle segnalazioni inoltrate dall'utente
+- info -> mostra credits
 
 ## Funzioni amministratori
 
 Gli amministratori riceveranno, sempre all'interno del bot, la notifica di ogni foto (segnalazione).
 
-ok -> approva tutte le segnalazioni ricevute nel bot (stato da 0 a 1)
-d:ID -> elimina una segnalazione (stato da 0 o 1 a 2)
-as:ID -> crea issue su GitHub - https://github.com/emergenzeHack/terremotocentro_segnalazioni/
+- ok -> approva tutte le segnalazioni ricevute nel bot (stato da 0 a 1)
+- d:ID -> elimina una segnalazione (stato da 0 o 1 a 2)
+- as:ID -> crea issue su GitHub - https://github.com/emergenzeHack/terremotocentro_segnalazioni/
 
 ## Note
 
