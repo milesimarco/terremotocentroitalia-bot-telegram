@@ -16,90 +16,6 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
         return;
     }
 
-    if ( $telegram_user_id == '63480147' || $telegram_user_id == '61359892' || $telegram_user_id == '166538229' ) {
-      if ( $text == 'ok' ) {
-        global $wpdb;
-        $wpdb->update(
-            $wpdb->prefix . 'segnalazioni',
-            array(
-                'stato' => 1
-            ),
-            array(
-                'stato' => '0'
-            ),
-            array( '%d', '%d' )
-        );
-        telegram_sendmessage( $telegram_user_id, 'Approvato tutto. Digita d:ID se vuoi rimuovere qualcosa');
-        die();
-      } else if ( substr( $text, 0, 1 ) === 'd' ) { //as:id:issue
-        $arr = explode(':', $text);
-        global $wpdb;
-        $wpdb->update(
-            $wpdb->prefix . 'segnalazioni',
-            array(
-                'stato' => 2
-            ),
-            array(
-                'id' => $arr[1]
-            ),
-            array( '%d', '%d' )
-        );
-        telegram_sendmessage( $telegram_user_id, $arr[1].' eliminato');
-        die();
-      } else if ( substr( $text, 0, 2 ) === 'as' ) { //as:id:issue
-
-        $arr = explode(':', $text);
-
-        global $wpdb;
-
-        $ob = $wpdb->get_row('SELECT * FROM '.$wpdb->prefix.'segnalazioni WHERE id="'.$arr[1].'"');
-
-        if ( $ob->github_issue ) {
-          telegram_sendmessage( $telegram_user_id, 'issue già creata'.PHP_EOL.'http://goo.gl/zdByBS');
-          die();
-        }
-
-        $title = $ob->description;
-        $body = '!['.$ob->description.']('.$ob->url.')'.PHP_EOL.'[Link Mappa](http://www.piersoft.it/terremotocentro/#7/'.$ob->lat.'/'.$ob->lon.')';
-
-        $data = array(
-          'title' => $title,
-          'body' => $body
-        );
-
-        $options = array(
-          'http' => array(
-            'method'  => 'POST',
-            'header'  => "Content-Type: application/json\r\n"."Authorization: Basic ".base64_encode( "milesimarco:MY_PERSONAL_TOKEN" )."\r\n",
-            'content' => json_encode( $data )
-            )
-        );
-
-        $context  = stream_context_create( $options );
-        ini_set("user_agent","Opera/9.80 (Windows NT 6.1; U; Edition Campaign 21; en-GB) Presto/2.7.62 Version/11.00");
-        $result = file_get_contents( 'https://api.github.com/repos/emergenzeHack/terremotocentro_segnalazioni/issues', false, $context);
-
-        $array_response = (array)json_decode($result, TRUE);
-        $url_issue = $array_response['html_url'];
-
-        global $wpdb;
-        $wpdb->update(
-            $wpdb->prefix . 'segnalazioni',
-            array(
-                'github_issue' => $url_issue
-            ),
-            array(
-                'id' => $arr[1]
-            ),
-            array( '%s' ),
-            array( '%d')
-        );
-
-        telegram_sendmessage( $telegram_user_id, 'issue creata'.PHP_EOL.'http://goo.gl/zdByBS');
-        die();
-      }
-    }
-
     if ( $text == 'Invia' || $text == 'invia' ) {
       $desc = get_post_meta( $plugin_post_id, 'telegram_custom_description', true );
 
@@ -115,17 +31,19 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
       }
       get_post_meta($plugin_post_id, 'telegram_username', true) ? $t_user = get_post_meta($plugin_post_id, 'telegram_username', true) : $t_user = '';
 
+      $arr = array(
+          'lat' => $lat,
+          'lon' => $long,
+          'telegram_id' => $telegram_user_id,
+          'telegram_username' => $t_user,
+          'wordpress_id' => $plugin_post_id,
+          'description' => $desc,
+          'stato' => 1
+      );
       global $wpdb;
       $wpdb->insert(
           $wpdb->prefix . 'segnalazioni',
-          array(
-              'lat' => $lat,
-              'lon' => $long,
-              'telegram_id' => $telegram_user_id,
-              'telegram_username' => $t_user,
-              'wordpress_id' => $plugin_post_id,
-              'description' => $desc
-          ),
+          $arr,
           array( '%s', '%s', '%d', '%s', '%d', '%s' )
       );
       delete_post_meta( $plugin_post_id, 'telegram_custom_description' );
@@ -133,9 +51,10 @@ function telegramcustom_parse( $telegram_user_id, $text ) {
       delete_post_meta( $plugin_post_id, 'telegram_last_latitude' );
       delete_post_meta( $plugin_post_id, 'telegram_last_longitude' );
 
+      telegram_create_github_issue( $arr );
       telegram_sendmessage( $telegram_user_id, 'Segnalazione registrata. Grazie');
 
-      telegramcustom_send_check( $wpdb->insert_id, '', $desc );
+      telegramcustom_send_check();
 
     } else if ( $text == 'info' || $text == '/help' ) {
       telegram_sendmessage( $telegram_user_id, 'Bot creato per http://terremotocentroitalia.info/'.PHP_EOL.'Per info e suggerimenti: @Milmor');
@@ -202,17 +121,20 @@ function telegram_parse_photo_s ( $telegram_user_id, $photo  ) {
 
     global $wpdb;
 
+    $arr = array(
+        'lat' => $lat,
+        'lon' => $long,
+        'telegram_id' => $telegram_user_id,
+        'telegram_username' => $t_user,
+        'wordpress_id' => $plugin_post_id,
+        'description' => $desc,
+        'url' => $url,
+        'stato' => 1
+    );
+
     $wpdb->insert(
         $wpdb->prefix . 'segnalazioni',
-        array(
-            'lat' => $lat,
-            'lon' => $long,
-            'telegram_id' => $telegram_user_id,
-            'telegram_username' => $t_user,
-            'wordpress_id' => $plugin_post_id,
-            'description' => $desc,
-            'url' => $url
-        ),
+        $arr,
         array( '%s', '%s', '%d', '%s', '%d', '%s', '%s' )
     );
     telegram_sendmessage( $telegram_user_id, 'Foto registrata. Grazie');
@@ -221,7 +143,8 @@ function telegram_parse_photo_s ( $telegram_user_id, $photo  ) {
     delete_post_meta( $plugin_post_id, 'telegram_last_latitude' );
     delete_post_meta( $plugin_post_id, 'telegram_last_longitude' );
 
-    telegramcustom_send_check( $wpdb->insert_id, $url, $desc );
+    telegram_create_github_issue( $arr );
+    telegramcustom_send_check();
 
   }
 } add_action('telegram_parse_photo','telegram_parse_photo_s', 10, 2);
@@ -250,18 +173,57 @@ function telegramcustom_c_parse_location ( $telegram_user_id, $lat, $long  ) {
 
 }
 
-function telegramcustom_send_check( $id, $url, $desc ) {
-  $text =  $desc.PHP_EOL.PHP_EOL.$id.' - Digita ok per approvare, d:ID per eliminare, as:ID per creare issue';
+function telegramcustom_send_check() {
+  telegram_sendmessage( '63480147', '*ADMIN*'.PHP_EOL.'nuova issue: http://goo.gl/zdByBS');
+  telegram_sendmessage( '61359892', '*ADMIN*'.PHP_EOL.'nuova issue: http://goo.gl/zdByBS');
+  telegram_sendmessage( '166538229', '*ADMIN*'.PHP_EOL.'nuova issue: http://goo.gl/zdByBS');
+}
 
-  if ( $url ) {
-    telegram_sendphoto( '63480147', $text, $url);
-    telegram_sendphoto( '61359892', $text, $url);
-    telegram_sendphoto( '166538229', $text, $url);
-  } else {
-    telegram_sendmessage( '63480147', $text );
-    telegram_sendmessage( '61359892', $text );
-    telegram_sendmessage( '166538229', $text );
+function telegram_create_github_issue( $arr ) {
+
+  $title = $arr['description'];
+  if ( $arr['url'] ) {
+    $body .= '!['.$arr['description'].']('.$arr['url'].')'.PHP_EOL;
   }
+  $body .= '{ "lat": '.$arr["lat"].', "lon": '.$arr["lon"].', "wordpress_id": '.$arr["wordpress_id"].', "telegram_username": '.$arr["telegram_username"].' }';
+
+  $body .= PHP_EOL.'[Link Mappa](http://www.piersoft.it/terremotocentro/#20/'.$arr['lat'].'/'.$arr['lon'].')';
+
+  $data = array(
+    'title' => $title,
+    'body' => $body,
+    'labels' => array( 'Telegram' )
+  );
+
+  $options = array(
+    'http' => array(
+      'method'  => 'POST',
+      'header'  => "Content-Type: application/json\r\n"."Authorization: Basic ".base64_encode( "milesimarco:<TOKEN>" )."\r\n",
+      'content' => json_encode( $data )
+      )
+  );
+
+  $context  = stream_context_create( $options );
+  ini_set("user_agent","Opera/9.80 (Windows NT 6.1; U; Edition Campaign 21; en-GB) Presto/2.7.62 Version/11.00");
+  $result = file_get_contents( 'https://api.github.com/repos/emergenzeHack/terremotocentro_segnalazioni/issues', false, $context);
+
+  $array_response = (array)json_decode($result, TRUE);
+  $url_issue = $array_response['html_url'];
+
+  global $wpdb;
+  $wpdb->update(
+      $wpdb->prefix . 'segnalazioni',
+      array(
+          'github_issue' => $url_issue
+      ),
+      array(
+          'id' => $arr[1]
+      ),
+      array( '%s' ),
+      array( '%d')
+  );
+
+  telegram_sendmessage( $telegram_user_id, 'issue creata'.PHP_EOL.'http://goo.gl/zdByBS');
 }
 
 function telegramcustom_csv_pull() {
